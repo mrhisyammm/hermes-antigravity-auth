@@ -59,6 +59,11 @@ if (Test-Path $configPath) {
             $newProvider = "providers:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
             $content = $content -replace "providers:", $newProvider
         }
+    } else {
+        # Auto-update base_url if it contains the old 8045 port
+        if ($content -like "*base_url:*8045*") {
+            $content = $content -replace "base_url:.*8045.*", "base_url: http://127.0.0.1:8999/v1"
+        }
     }
     
     # 2. Add antigravity_mrhisyammm to plugins.enabled list
@@ -83,6 +88,13 @@ if (Test-Path $envPath) {
         $envContent = $envContent + "`nANTIGRAVITY_API_KEY=mock`nANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
         [System.IO.File]::WriteAllText($envPath, $envContent)
         Write-Host "✓ .env configured successfully."
+    } else {
+        # Auto-update base_url if it contains the old 8045 port
+        if ($envContent -like "*ANTIGRAVITY_BASE_URL=*8045*") {
+            $envContent = $envContent -replace "ANTIGRAVITY_BASE_URL=.*8045.*", "ANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
+            [System.IO.File]::WriteAllText($envPath, $envContent)
+            Write-Host "✓ .env base URL updated successfully."
+        }
     }
 }
 

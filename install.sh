@@ -58,7 +58,12 @@ if [ -f "$CONFIG_PATH" ]; then
         sed -i 's/providers: {}/providers:
   antigravity:
     api_key: mock
-    base_url: http://127.0.0.1:8999/v1/g' "$CONFIG_PATH"
+    base_url: http:\/\/127.0.0.1:8999\/v1/g' "$CONFIG_PATH"
+    else
+        # Auto-update base_url if it contains the old 8045 port
+        if grep -q "8045" "$CONFIG_PATH"; then
+            sed -i 's/base_url:.*8045.*/base_url: http:\/\/127.0.0.1:8999\/v1/g' "$CONFIG_PATH"
+        fi
     fi
     
     # 2. Add antigravity_mrhisyammm to plugins.enabled list
@@ -86,6 +91,12 @@ if [ -f "$ENV_PATH" ]; then
 ANTIGRAVITY_API_KEY=mock
 ANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1" >> "$ENV_PATH"
         echo "✓ .env configured successfully."
+    else
+        # Auto-update base_url if it contains the old 8045 port
+        if grep -q "ANTIGRAVITY_BASE_URL=.*8045" "$ENV_PATH"; then
+            sed -i 's/ANTIGRAVITY_BASE_URL=.*8045.*/ANTIGRAVITY_BASE_URL=http:\/\/127.0.0.1:8999\/v1/g' "$ENV_PATH"
+            echo "✓ .env base URL updated successfully."
+        fi
     fi
 fi
 

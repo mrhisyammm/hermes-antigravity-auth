@@ -58,11 +58,7 @@ The following commands work directly inside your Hermes session (both in the ter
 - **`/antigravity-mrhisyammm-login`**: Directly triggers the browser login flow and sets the account active, printing the result in your chat.
 - **`/antigravity-mrhisyammm-quota`**: Directly fetches and prints your live Weekly and 5-Hour limits right in your chat window.
 
-### 2. Desktop GUI Setup (Optional)
-If using the Hermes Desktop GUI app:
-- Under **Settings > Other Providers**, make sure to clear the value of `ANTIGRAVITY_BASE_URL` (leave it blank / click the trash bin icon) so it defaults to the plugin's internal proxy on port `8999` automatically.
-
-### 3. Select Model
+### 2. Select Model
 Run the model configuration wizard:
 ```bash
 hermes model --refresh
