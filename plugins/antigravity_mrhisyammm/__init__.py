@@ -340,15 +340,11 @@ class AntigravityProxyHandler(BaseHTTPRequestHandler):
             self.send_header("Connection", "keep-alive")
             self.end_headers()
             
-            buffer = ""
-            while True:
-                chunk = resp.read(1024)
-                if not chunk:
-                    break
-                buffer += chunk.decode('utf-8')
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    line = line.strip()
+            try:
+                for line_bytes in resp:
+                    line = line_bytes.decode('utf-8').strip()
+                    if not line:
+                        continue
                     if line.startswith("data:"):
                         try:
                             data_str = line[5:].strip()
@@ -360,9 +356,13 @@ class AntigravityProxyHandler(BaseHTTPRequestHandler):
                             text = ""
                             finish_reason = None
                             if candidates:
-                                text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                if parts:
+                                    text = parts[0].get("text", "")
                                 raw_reason = candidates[0].get("finishReason")
                                 if raw_reason == "STOP":
+                                    finish_reason = "stop"
+                                elif raw_reason:
                                     finish_reason = "stop"
                                 
                             if text or finish_reason:
@@ -380,6 +380,13 @@ class AntigravityProxyHandler(BaseHTTPRequestHandler):
                                 self.wfile.flush()
                         except Exception as parse_err:
                             pass
+            except Exception as stream_err:
+                pass
+            finally:
+                try:
+                    resp.close()
+                except Exception:
+                    pass
             
             self.wfile.write(b"data: [DONE]\n\n")
             self.wfile.flush()
