@@ -46,57 +46,96 @@ Copy-Item -Path (Join-Path $srcPath "plugins\antigravity_mrhisyammm\*") -Destina
 
 Write-Host "✓ Plugin files copied successfully."
 
-# Configure config.yaml
-$configPath = Join-Path $hermesDir 'config.yaml'
-if (Test-Path $configPath) {
-    Write-Host "Configuring config.yaml..."
-    
-    $content = [System.IO.File]::ReadAllText($configPath)
-    
-    # 1. Add antigravity provider to providers section
-    if ($content -notlike "*providers:*antigravity:*") {
-        if ($content -like "*providers: {}*") {
-            $newProviders = "providers:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
-            $content = $content -replace "providers: \{\}", $newProviders
-        } else {
-            $newProvider = "providers:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
-            $content = $content -replace "providers:", $newProvider
+# Configure config.yaml and .env via Python helper first
+$pythonConfigured = $false
+try {
+    $pyScript = Join-Path $srcPath "configure_config.py"
+    if (Test-Path $pyScript) {
+        $pyCmd = "python"
+        $pyTest = $null
+        try {
+            $pyTest = & python -V 2>&1
+        } catch {}
+        
+        if ($null -eq $pyTest -or $pyTest -like "*not recognized*") {
+            try {
+                $pyTest = & python3 -V 2>&1
+                if ($null -ne $pyTest -and $pyTest -notlike "*not recognized*") {
+                    $pyCmd = "python3"
+                }
+            } catch {}
         }
-    } else {
-        # Auto-update base_url if it contains the old 8045 port
-        if ($content -like "*base_url:*8045*") {
-            $content = $content -replace "base_url:.*8045.*", "base_url: http://127.0.0.1:8999/v1"
-        }
-    }
-    
-    # 2. Add antigravity_mrhisyammm to plugins.enabled list
-    if ($content -notlike "*enabled:*antigravity_mrhisyammm*") {
-        if ($content -like "*plugins:*enabled:*") {
-            $content = $content -replace "plugins:`n  enabled:", "plugins:`n  enabled:`n  - antigravity_mrhisyammm"
-        } else {
-            $content = $content + "`nplugins:`n  enabled:`n  - antigravity_mrhisyammm`n  disabled: []"
+        
+        if ($null -ne $pyTest -and $pyTest -notlike "*not recognized*") {
+            Write-Host "Running Python configuration helper..."
+            & $pyCmd $pyScript $hermesDir
+            $pythonConfigured = $true
         }
     }
-    
-    [System.IO.File]::WriteAllText($configPath, $content)
-    Write-Host "✓ config.yaml configured successfully."
+} catch {
+    Write-Host "Python configuration check failed. Falling back to PowerShell script."
 }
 
-# Configure .env file
-$envPath = Join-Path $hermesDir '.env'
-if (Test-Path $envPath) {
-    Write-Host "Configuring .env..."
-    $envContent = [System.IO.File]::ReadAllText($envPath)
-    if ($envContent -notlike "*ANTIGRAVITY_API_KEY*") {
-        $envContent = $envContent + "`nANTIGRAVITY_API_KEY=mock`nANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
-        [System.IO.File]::WriteAllText($envPath, $envContent)
-        Write-Host "✓ .env configured successfully."
-    } else {
-        # Auto-update base_url if it contains the old 8045 port
-        if ($envContent -like "*ANTIGRAVITY_BASE_URL=*8045*") {
-            $envContent = $envContent -replace "ANTIGRAVITY_BASE_URL=.*8045.*", "ANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
+if (-not $pythonConfigured) {
+    # Configure config.yaml
+    $configPath = Join-Path $hermesDir 'config.yaml'
+    if (Test-Path $configPath) {
+        Write-Host "Configuring config.yaml (PowerShell fallback)..."
+        
+        $content = [System.IO.File]::ReadAllText($configPath)
+        
+        # 1. Add antigravity provider to providers section
+        if ($content -notlike "*antigravity:*") {
+            if ($content -like "*providers: {}*") {
+                $newProviders = "providers:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
+                $content = $content -replace "providers: \{\}", $newProviders
+            } elseif ($content -match "(?m)^providers:") {
+                $content = $content -replace "(?m)^providers:", "providers:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
+            } else {
+                $content = $content + "`nproviders:`n  antigravity:`n    api_key: mock`n    base_url: http://127.0.0.1:8999/v1"
+            }
+            Write-Host "✓ Added antigravity provider under providers: in config.yaml"
+        } else {
+            # Auto-update base_url if it contains the old 8045 port
+            if ($content -like "*base_url:*8045*") {
+                $content = $content -replace "base_url:.*8045.*", "base_url: http://127.0.0.1:8999/v1"
+                Write-Host "✓ Updated base_url port from 8045 to 8999 in config.yaml"
+            }
+        }
+        
+        # 2. Add antigravity_mrhisyammm to plugins.enabled list
+        if ($content -notlike "*antigravity_mrhisyammm*") {
+            if ($content -match "(?m)^plugins:") {
+                if ($content -match "(?m)^plugins:.*?enabled:") {
+                    $content = $content -replace "(?m)^plugins:.*?enabled:", "plugins:`n  enabled:`n  - antigravity_mrhisyammm"
+                } else {
+                    $content = $content -replace "(?m)^plugins:", "plugins:`n  enabled:`n  - antigravity_mrhisyammm`n  disabled: []"
+                }
+            } else {
+                $content = $content + "`nplugins:`n  enabled:`n  - antigravity_mrhisyammm`n  disabled: []"
+            }
+            Write-Host "✓ Added antigravity_mrhisyammm to plugins enabled list in config.yaml"
+        }
+        
+        [System.IO.File]::WriteAllText($configPath, $content)
+    }
+
+    # Configure .env file
+    $envPath = Join-Path $hermesDir '.env'
+    if (Test-Path $envPath) {
+        Write-Host "Configuring .env (PowerShell fallback)..."
+        $envContent = [System.IO.File]::ReadAllText($envPath)
+        if ($envContent -notlike "*ANTIGRAVITY_API_KEY*") {
+            $envContent = $envContent + "`nANTIGRAVITY_API_KEY=mock`nANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
             [System.IO.File]::WriteAllText($envPath, $envContent)
-            Write-Host "✓ .env base URL updated successfully."
+            Write-Host "✓ .env configured successfully."
+        } else {
+            # Auto-update base_url if it contains the old 8045 port
+            if ($envContent -like "*ANTIGRAVITY_BASE_URL=*8045*") {
+                $envContent = $envContent -replace "ANTIGRAVITY_BASE_URL=.*8045.*", "ANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
+                [System.IO.File]::WriteAllText($envPath, $envContent)
+                Write-Host "✓ .env base URL updated successfully."
+            }
         }
     }
 }
