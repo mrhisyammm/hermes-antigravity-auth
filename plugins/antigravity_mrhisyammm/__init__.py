@@ -19,7 +19,7 @@ ENDPOINT = "https://daily-cloudcode-pa.sandbox.googleapis.com"
 REDIRECT_URI = "http://localhost:51121/oauth-callback"
 SCOPES = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
 
-# Token, Project & Cooldown Cache
+# Token & Project Cache
 _token_cache = {}  # email -> token
 _project_cache = {}  # email -> project_id
 _cooldown_cache = {} # "email:family" -> timestamp until cooldown expires
@@ -180,7 +180,7 @@ class AntigravityProxyHandler(BaseHTTPRequestHandler):
                     "id": oai,
                     "object": "model",
                     "created": 1782210769,
-                    "owned_by": "antigravity-mrhisyammm"
+                    "owned_by": "antigravity"
                 })
             
             self.wfile.write(json.dumps({"object": "list", "data": models}).encode("utf-8"))
@@ -358,16 +358,21 @@ class AntigravityProxyHandler(BaseHTTPRequestHandler):
                             response_obj = gemini_data.get("response", {})
                             candidates = response_obj.get("candidates", [])
                             text = ""
+                            finish_reason = None
                             if candidates:
                                 text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                                raw_reason = candidates[0].get("finishReason")
+                                if raw_reason == "STOP":
+                                    finish_reason = "stop"
                                 
-                            if text:
+                            if text or finish_reason:
+                                # Translate to OpenAI chunk
                                 chunk_json = {
                                     "choices": [
                                         {
-                                            "delta": {"content": text},
+                                            "delta": {"content": text} if text else {},
                                             "index": 0,
-                                            "finish_reason": None
+                                            "finish_reason": finish_reason
                                         }
                                     ]
                                 }
