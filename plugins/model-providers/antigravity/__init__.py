@@ -1,4 +1,4 @@
-from providers import register_provider
+import providers
 from providers.base import ProviderProfile
 
 MODEL_MAPPING = {
@@ -37,4 +37,4 @@ antigravity = AntigravityProfile(
     fallback_models=tuple(MODEL_MAPPING.keys()),
 )
 
-register_provider(antigravity)
+providers.register_provider(antigravity)
