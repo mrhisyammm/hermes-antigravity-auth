@@ -11,11 +11,14 @@ $modelProvidersDest = Join-Path $pluginsDir 'model-providers\antigravity'
 $generalDest = Join-Path $pluginsDir 'antigravity_mrhisyammm'
 
 # Check if we are running from web stream or local folder
-$localPlugins = Join-Path $PSScriptRoot 'plugins'
+$localPlugins = ""
+if ($PSScriptRoot) {
+    $localPlugins = Join-Path $PSScriptRoot 'plugins'
+}
 $tempDir = Join-Path $env:TEMP 'hermes-antigravity-auth-temp'
 $srcPath = $PSScriptRoot
 
-if (-not $PSScriptRoot -or -not (Test-Path (Join-Path $localPlugins 'antigravity_mrhisyammm'))) {
+if (-not $PSScriptRoot -or $localPlugins -eq "" -or -not (Test-Path (Join-Path $localPlugins 'antigravity_mrhisyammm'))) {
     Write-Host "Running from web/remote stream. Downloading files from GitHub..."
     if (Test-Path $tempDir) {
         Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
