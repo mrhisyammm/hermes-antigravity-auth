@@ -1,0 +1,6 @@
+name: antigravity_mrhisyammm
+version: 1.0.0
+description: Google Antigravity accounts manager and proxy provider
+author: mrhisyammm
+provides_hooks:
+  - pre_llm_call
