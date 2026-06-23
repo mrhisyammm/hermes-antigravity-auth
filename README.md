@@ -51,30 +51,16 @@ Open your terminal and run the command corresponding to your operating system to
 
 ## How to Use
 
-### 1. In Hermes CLI (Terminal)
-Start a normal Hermes session:
-```bash
-hermes
-```
-Inside the chat box, type the main command:
-```text
-/antigravity-mrhisyammm
-```
-This will automatically launch the **Google Antigravity Accounts Manager** interactive menu in a new PowerShell window. Select option **`2`** to log in your Google account, option **`1`** to choose your active account, or option **`3`** to check quotas.
+### 1. Chat Commands (CLI & Desktop GUI)
+The following commands work directly inside your Hermes session (both in the terminal CLI chat box and the Desktop GUI app chat window):
 
-### 2. In Hermes Desktop (GUI App)
-The plugin works fully out-of-the-box inside the Hermes Desktop GUI app.
-- **Auto-Config**: Under **Settings > Other Providers**, make sure to clear the value of `ANTIGRAVITY_BASE_URL` (leave it blank/click the trash bin icon) so it defaults to the plugin's internal proxy on port `8999` automatically.
-- **Direct Login**: Inside the chat input window, simply type and send:
-  ```text
-  /antigravity-mrhisyammm-login
-  ```
-  This will launch the browser login and connect your Google account as active.
-- **Direct Quota**: Inside the chat input window, type and send:
-  ```text
-  /antigravity-mrhisyammm-quota
-  ```
-  This will print your remaining quotas directly as a chat response.
+- **`/antigravity-mrhisyammm`**: Launches the **Google Antigravity Accounts Manager** interactive menu in a new PowerShell window. Select option `2` to log in, `1` to choose your active account, `3` to check quotas, or `4` to remove accounts.
+- **`/antigravity-mrhisyammm-login`**: Directly triggers the browser login flow and sets the account active, printing the result in your chat.
+- **`/antigravity-mrhisyammm-quota`**: Directly fetches and prints your live Weekly and 5-Hour limits right in your chat window.
+
+### 2. Desktop GUI Setup (Optional)
+If using the Hermes Desktop GUI app:
+- Under **Settings > Other Providers**, make sure to clear the value of `ANTIGRAVITY_BASE_URL` (leave it blank / click the trash bin icon) so it defaults to the plugin's internal proxy on port `8999` automatically.
 
 ### 3. Select Model
 Run the model configuration wizard:
