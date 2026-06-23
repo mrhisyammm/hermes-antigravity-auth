@@ -2,14 +2,7 @@
 # Google Antigravity Auth Plugin Installer for Hermes Agent (macOS/Linux)
 
 # Resolve Hermes home folder
-if [ "$(uname)" == "Darwin" ]; then
-    HERMES_DIR="$HOME/Library/Application Support/hermes"
-    if [ ! -d "$HERMES_DIR" ]; then
-        HERMES_DIR="$HOME/.hermes"
-    fi
-else
-    HERMES_DIR="$HOME/.hermes"
-fi
+HERMES_DIR="$HOME/.hermes"
 
 if [ ! -d "$HERMES_DIR" ]; then
     echo "Could not find Hermes home directory. Please make sure Hermes is installed."
@@ -19,6 +12,20 @@ fi
 PLUGINS_DIR="$HERMES_DIR/plugins"
 MODEL_PROVIDERS_DEST="$PLUGINS_DIR/model-providers/antigravity"
 GENERAL_DEST="$PLUGINS_DIR/antigravity_mrhisyammm"
+
+# Kill existing running processes to prevent file locks and ensure reload
+echo "Stopping running Hermes and background proxy daemons..."
+# Kill proxy listening on port 8999
+PROXY_PID=$(lsof -t -i:8999 2>/dev/null)
+if [ -n "$PROXY_PID" ]; then
+    kill -9 $PROXY_PID 2>/dev/null || true
+fi
+# Kill hermes processes
+HERMES_PIDS=$(ps aux | grep -i "hermes" | grep -v "grep" | awk '{print $2}')
+if [ -n "$HERMES_PIDS" ]; then
+    kill -9 $HERMES_PIDS 2>/dev/null || true
+fi
+echo "✓ Active daemons stopped."
 
 # Check if we are running from web stream
 if [ ! -d "plugins/antigravity_mrhisyammm" ]; then

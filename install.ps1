@@ -10,6 +10,15 @@ $pluginsDir = Join-Path $hermesDir 'plugins'
 $modelProvidersDest = Join-Path $pluginsDir 'model-providers\antigravity'
 $generalDest = Join-Path $pluginsDir 'antigravity_mrhisyammm'
 
+# Kill existing running processes to prevent file locks and ensure reload
+Write-Host "Stopping running Hermes and background proxy daemons..."
+Stop-Process -Name hermes -Force -ErrorAction SilentlyContinue
+$proxyConn = Get-NetTCPConnection -LocalPort 8999 -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($proxyConn) {
+    Stop-Process -Id $proxyConn.OwningProcess -Force -ErrorAction SilentlyContinue
+}
+Write-Host "✓ Active daemons stopped."
+
 # Check if we are running from web stream or local folder
 $localPlugins = ""
 if ($PSScriptRoot) {
