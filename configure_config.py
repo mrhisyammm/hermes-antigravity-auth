@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 
 def configure(hermes_dir):
     config_path = os.path.join(hermes_dir, "config.yaml")
@@ -8,40 +9,87 @@ def configure(hermes_dir):
         return
 
     with open(config_path, "r", encoding="utf-8") as f:
-        content = f.read()
+        lines = f.readlines()
+
+    # Clean up any existing antigravity lines to avoid duplicate/corrupt states
+    clean_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if "antigravity:" in line:
+            # Skip this line and the next 2 lines (api_key and base_url)
+            i += 3
+            continue
+        if "antigravity_mrhisyammm" in line:
+            i += 1
+            continue
+        clean_lines.append(line)
+        i += 1
+    
+    lines = clean_lines
 
     # 1. Ensure providers.antigravity is defined
-    if "antigravity:" not in content:
-        # Check if providers: {} exists
-        if "providers: {}" in content:
-            content = content.replace("providers: {}", "providers:\n  antigravity:\n    api_key: mock\n    base_url: http://127.0.0.1:8999/v1")
-        elif "providers:" in content:
-            # Insert under providers:
-            content = content.replace("providers:", "providers:\n  antigravity:\n    api_key: mock\n    base_url: http://127.0.0.1:8999/v1")
-        else:
-            # Append providers section
-            content += "\nproviders:\n  antigravity:\n    api_key: mock\n    base_url: http://127.0.0.1:8999/v1"
-        print("✓ Added antigravity provider under providers: in config.yaml")
+    # Check for active providers: line (not under model_catalog)
+    providers_idx = -1
+    is_inside_model_catalog = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "model_catalog:":
+            is_inside_model_catalog = True
+        elif is_inside_model_catalog and stripped:
+            if not line.startswith("  ") and not line.startswith(" "):
+                is_inside_model_catalog = False
+        
+        if stripped.startswith("providers:") and not is_inside_model_catalog:
+            providers_idx = i
+            break
+    
+    if providers_idx != -1:
+        print("Inserted antigravity under active providers: section in config.yaml")
     else:
-        # Auto-update base_url if it has the old 8045 port
-        if "8045" in content:
-            import re
-            content = re.sub(r"base_url:\s*.*8045.*", "base_url: http://127.0.0.1:8999/v1", content)
-            print("✓ Updated base_url port from 8045 to 8999 in config.yaml")
+        # Check for commented # providers: line
+        commented_providers_idx = -1
+        for i, line in enumerate(lines):
+            if line.strip() == "# providers:":
+                commented_providers_idx = i
+                break
+        
+        if commented_providers_idx != -1:
+            lines[commented_providers_idx] = "providers:\n  antigravity:\n    api_key: mock\n    base_url: http://127.0.0.1:8999/v1\n"
+            print("Activated and set antigravity under providers: in config.yaml")
+        else:
+            # Append a new providers section
+            lines.append("\nproviders:\n  antigravity:\n    api_key: mock\n    base_url: http://127.0.0.1:8999/v1\n")
+            print("Appended providers section with antigravity to config.yaml")
 
     # 2. Ensure antigravity_mrhisyammm is in plugins.enabled
-    if "antigravity_mrhisyammm" not in content:
-        if "plugins:" in content:
-            if "enabled:" in content:
-                content = content.replace("enabled:", "enabled:\n  - antigravity_mrhisyammm")
-            else:
-                content = content.replace("plugins:", "plugins:\n  enabled:\n  - antigravity_mrhisyammm\n  disabled: []")
+    plugins_idx = -1
+    for i, line in enumerate(lines):
+        if line.strip() == "plugins:":
+            plugins_idx = i
+            break
+    
+    if plugins_idx != -1:
+        enabled_idx = -1
+        for j in range(plugins_idx + 1, len(lines)):
+            if lines[j].strip() == "enabled:":
+                enabled_idx = j
+                break
+            if lines[j].strip() and not lines[j].startswith(" "):
+                break
+        
+        if enabled_idx != -1:
+            lines.insert(enabled_idx + 1, "  - antigravity_mrhisyammm\n")
         else:
-            content += "\nplugins:\n  enabled:\n  - antigravity_mrhisyammm\n  disabled: []"
-        print("✓ Added antigravity_mrhisyammm to plugins enabled list in config.yaml")
+            lines.insert(plugins_idx + 1, "  enabled:\n  - antigravity_mrhisyammm\n")
+        print("Added antigravity_mrhisyammm under enabled plugins in config.yaml")
+    else:
+        lines.append("\nplugins:\n  enabled:\n  - antigravity_mrhisyammm\n  disabled: []\n")
+        print("Appended plugins section with antigravity_mrhisyammm in config.yaml")
 
     with open(config_path, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.writelines(lines)
 
     # Configure .env
     env_path = os.path.join(hermes_dir, ".env")
@@ -49,17 +97,15 @@ def configure(hermes_dir):
         with open(env_path, "r", encoding="utf-8") as f:
             env_content = f.read()
         
-        if "ANTIGRAVITY_API_KEY" not in env_content:
-            env_content += "\nANTIGRAVITY_API_KEY=mock\nANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
-            with open(env_path, "w", encoding="utf-8") as f:
-                f.write(env_content)
-            print("✓ .env configured successfully via Python.")
-        elif "8045" in env_content:
-            import re
-            env_content = re.sub(r"ANTIGRAVITY_BASE_URL=.*8045.*", "ANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1", env_content)
-            with open(env_path, "w", encoding="utf-8") as f:
-                f.write(env_content)
-            print("✓ .env base URL updated successfully via Python.")
+        # Remove any existing antigravity variables first to ensure clean state
+        env_lines = env_content.splitlines()
+        env_lines = [l for l in env_lines if "ANTIGRAVITY_API_KEY" not in l and "ANTIGRAVITY_BASE_URL" not in l]
+        env_content = "\n".join(env_lines)
+        
+        env_content += "\nANTIGRAVITY_API_KEY=mock\nANTIGRAVITY_BASE_URL=http://127.0.0.1:8999/v1"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(env_content)
+        print("env configured successfully via Python.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
