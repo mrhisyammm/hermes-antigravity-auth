@@ -21,7 +21,14 @@ MODEL_MAPPING = {
 }
 
 class AntigravityProfile(ProviderProfile):
-    def fetch_models(self, *, api_key=None, timeout=8.0):
+    def fetch_models(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float = 8.0,
+        **kwargs
+    ) -> list[str] | None:
         return list(MODEL_MAPPING.keys())
 
 antigravity = AntigravityProfile(
